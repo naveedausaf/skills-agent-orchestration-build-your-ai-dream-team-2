@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A concise operations view of active projects.">
+    <title>Project Pulse</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="dashboard" aria-labelledby="page-title">
+      <header class="dashboard__header">
+        <p class="dashboard__eyebrow">Operations overview</p>
+        <h1 class="dashboard__title" id="page-title">Project Pulse</h1>
+        <p class="dashboard__intro">A focused view of active work, ownership, and delivery signals.</p>
+        <p class="dashboard__count" id="project-count" aria-live="polite"></p>
+      </header>
+
+      <section class="dashboard__projects" aria-labelledby="projects-title">
+        <div class="dashboard__section-heading">
+          <h2 id="projects-title">Active projects</h2>
+          <p class="dashboard__state" id="project-state" role="status">Loading projects…</p>
+        </div>
+        <div class="project-grid" id="project-grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script type="module">
+      const dataUrl = "project-data.json";
+      const projectGrid = document.querySelector("#project-grid");
+      const projectState = document.querySelector("#project-state");
+      const projectCount = document.querySelector("#project-count");
+      const allowedStatuses = new Set(["On track", "At risk", "Blocked"]);
+      const allowedPriorities = new Set(["High", "Medium", "Low"]);
+
+      function isNonEmptyString(value) {
+        return typeof value === "string" && value.trim().length > 0;
+      }
+
+      function createTextElement(tagName, className, text) {
+        const element = document.createElement(tagName);
+        element.className = className;
+        element.textContent = text;
+        return element;
+      }
+
+      function statusClass(status) {
+        return allowedStatuses.has(status)
+          ? `status-badge--${status.toLowerCase().replace(/\s+/g, "-")}`
+          : "status-badge--neutral";
+      }
+
+      function priorityClass(priority) {
+        return allowedPriorities.has(priority)
+          ? `priority-label--${priority.toLowerCase()}`
+          : "priority-label--neutral";
+      }
+
+      function createDefinition(term, description) {
+        const termElement = createTextElement("dt", "project-card__term", term);
+        const descriptionElement = createTextElement("dd", "project-card__definition", description);
+        return [termElement, descriptionElement];
+      }
+
+      function createProjectCard(project) {
+        const card = document.createElement("article");
+        card.className = "project-card";
+
+        const header = document.createElement("header");
+        header.className = "project-card__header";
+        header.append(createTextElement("h3", "project-card__title", project.name));
+
+        const priority = document.createElement("p");
+        priority.className = `priority-label ${priorityClass(project.priority)}`;
+        const prioritySymbol = createTextElement("span", "priority-label__symbol", "◆");
+        prioritySymbol.setAttribute("aria-hidden", "true");
+        priority.append(prioritySymbol, document.createTextNode(` Priority: ${project.priority}`));
+        header.append(priority);
+        card.append(header);
+
+        const details = document.createElement("dl");
+        details.className = "project-card__details";
+        details.append(...createDefinition("Owner", project.owner));
+
+        const status = document.createElement("dd");
+        status.className = `status-badge ${statusClass(project.status)}`;
+        const statusSymbol = createTextElement("span", "status-badge__symbol", "●");
+        statusSymbol.setAttribute("aria-hidden", "true");
+        status.append(statusSymbol, document.createTextNode(` Status: ${project.status}`));
+        details.append(createTextElement("dt", "project-card__term", "Status"), status);
+        card.append(details);
+
+        const activity = document.createElement("div");
+        activity.className = "project-card__activity";
+        activity.append(createTextElement("h4", "project-card__label", "Recent activity"));
+        activity.append(createTextElement("p", "project-card__activity-text", project.recentActivity));
+        card.append(activity);
+
+        if (isNonEmptyString(project.summary)) {
+          card.append(createTextElement("p", "project-card__summary", project.summary));
+        }
+
+        return card;
+      }
+
+      function showError(message) {
+        projectGrid.replaceChildren();
+        projectState.className = "dashboard__state dashboard__state--error";
+        projectState.setAttribute("role", "alert");
+        projectState.textContent = message;
+        projectCount.textContent = "";
+      }
+
+      function renderProjects(payload) {
+        if (!payload || typeof payload !== "object" || !Array.isArray(payload.projects)) {
+          throw new Error("Project data has an invalid schema: expected a projects array.");
+        }
+
+        const validProjects = [];
+        let skippedProjects = 0;
+
+        for (const project of payload.projects) {
+          const isValidProject = project && typeof project === "object"
+            && isNonEmptyString(project.name)
+            && isNonEmptyString(project.owner)
+            && isNonEmptyString(project.status)
+            && isNonEmptyString(project.recentActivity)
+            && isNonEmptyString(project.priority);
+
+          if (isValidProject) {
+            validProjects.push(project);
+          } else {
+            skippedProjects += 1;
+          }
+        }
+
+        projectGrid.replaceChildren(...validProjects.map(createProjectCard));
+        projectState.className = "dashboard__state";
+        projectState.setAttribute("role", "status");
+
+        if (validProjects.length === 0) {
+          projectState.textContent = "No valid projects are available to display.";
+          projectCount.textContent = skippedProjects > 0
+            ? `${skippedProjects} invalid project record${skippedProjects === 1 ? "" : "s"} skipped.`
+            : "";
+          return;
+        }
+
+        projectState.textContent = skippedProjects > 0
+          ? `${skippedProjects} invalid project record${skippedProjects === 1 ? "" : "s"} skipped.`
+          : "";
+        projectCount.textContent = `${validProjects.length} active project${validProjects.length === 1 ? "" : "s"}.`;
+      }
+
+      async function loadProjects() {
+        try {
+          let response;
+          try {
+            response = await fetch(dataUrl);
+          } catch (error) {
+            throw new Error("Unable to request project data. Check your network connection and try again.");
+          }
+
+          if (!response.ok) {
+            throw new Error(`Unable to load project data: server returned ${response.status} ${response.statusText}.`);
+          }
+
+          let payload;
+          try {
+            payload = await response.json();
+          } catch (error) {
+            throw new Error("Project data could not be read because it is not valid JSON.");
+          }
+
+          renderProjects(payload);
+        } catch (error) {
+          showError(error.message);
+        }
+      }
+
+      loadProjects();
+    </script>
+  </body>
+</html>

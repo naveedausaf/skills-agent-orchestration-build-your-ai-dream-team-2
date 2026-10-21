@@ -1,0 +1,44 @@
+{
+  "projects": [
+    {
+      "name": "Northstar onboarding",
+      "owner": "Mona Patel",
+      "status": "On track",
+      "recentActivity": "Prototype review completed on 18 October; pilot cohort invitations are scheduled.",
+      "priority": "High",
+      "summary": "A guided setup experience that helps new workspace administrators reach their first successful team workflow."
+    },
+    {
+      "name": "Signal reliability",
+      "owner": "Elliot Brooks",
+      "status": "At risk",
+      "recentActivity": "Alert tuning is in progress after the weekly incident review identified duplicate paging.",
+      "priority": "High",
+      "summary": "Improves service health signals and reduces noisy alerts for the operations rotation."
+    },
+    {
+      "name": "Atlas reporting",
+      "owner": "Priya Shah",
+      "status": "On track",
+      "recentActivity": "The export performance test met the target for the largest customer workspace.",
+      "priority": "Medium",
+      "summary": "Delivers a concise operational reporting view for program leads and customer success partners."
+    },
+    {
+      "name": "Archive migration",
+      "owner": "Jordan Lee",
+      "status": "Blocked",
+      "recentActivity": "Vendor access remains pending while the security exception is reviewed.",
+      "priority": "Medium",
+      "summary": "Moves legacy project archives to the governed storage platform with retained access controls."
+    },
+    {
+      "name": "Knowledge base refresh",
+      "owner": "Samira Khan",
+      "status": "On track",
+      "recentActivity": "Owners approved the revised article taxonomy and the content audit is underway.",
+      "priority": "Low",
+      "summary": "Keeps contributor guidance current, searchable, and easier to maintain."
+    }
+  ]
+}
